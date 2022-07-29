@@ -4,7 +4,9 @@
 
 
 
+![test-tracker 00_00_05-00_00_10~3](README.assets/test-tracker 00_00_05-00_00_103.gif)
 
+![new-test2](README.assets/new-test2.gif)
 
 ## 1. 快速开始
 
@@ -21,7 +23,7 @@ python -m pip install paddlepaddle -i https://mirror.baidu.com/pypi/simple
 
 # 克隆Sports_Game_tracker仓库
 cd <path/to/clone/Sports_Game_tracker>
-git clone https://github.com/PaddlePaddle/PaddleDetection.git
+git clone https://github.com/KirigiriSuzumiya/Sports_Game_Tracker.git
 
 # 安装其他依赖
 cd Sports_Game_tracker
