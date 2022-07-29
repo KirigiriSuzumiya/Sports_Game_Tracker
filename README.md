@@ -4,9 +4,9 @@
 
 
 
-![test-tracker 00_00_05-00_00_10~3](README.assets/test-tracker 00_00_05-00_00_103.gif)
+![test-tracker](README.assets/test-tracker.gif)
 
-![new-test2](README.assets/new-test2.gif)
+![](README.assets/full-test 00_04_07-00_04_12.gif)
 
 ## 1. 快速开始
 
