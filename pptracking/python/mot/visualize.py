@@ -196,7 +196,9 @@ def plot_tracking_dict(image,
                        do_break_in_counting=False,
                        entrance=None,
                        records=None,
-                       center_traj=None):
+                       center_traj=None,
+                       draw_center_traj=False,
+                       ):
     im = np.ascontiguousarray(np.copy(image))
     im_h, im_w = im.shape[:2]
     if do_break_in_counting:
@@ -331,7 +333,7 @@ def plot_tracking_dict(image,
                     text_scale,
                     color,
                     thickness=text_thickness)
-        if center_traj is not None:
+        if center_traj is not None and draw_center_traj:
             for traj in center_traj:
                 for i in traj.keys():
                     if i not in record_id:

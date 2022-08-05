@@ -25,6 +25,7 @@ from collections import Sequence, defaultdict
 from datacollector import DataCollector, Result
 
 # add deploy path of PadleDetection to sys.path
+
 parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
 sys.path.insert(0, parent_path)
 
@@ -35,7 +36,7 @@ from python.infer import Detector, DetectorPicoDet
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image, ShortSizeScale
-from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_vehicleplate
+from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
@@ -47,9 +48,6 @@ from pphuman.action_infer import SkeletonActionRecognizer, DetActionRecognizer, 
 from pphuman.action_utils import KeyPointBuff, ActionVisualHelper
 from pphuman.reid import ReID
 from pphuman.mtmct import mtmct_process
-
-from ppvehicle.vehicle_plate import PlateRecognizer
-from ppvehicle.vehicle_attr import VehicleAttr
 
 from download import auto_download_model
 
@@ -114,6 +112,10 @@ class Pipeline(object):
         self.do_break_in_counting = args.do_break_in_counting
         self.region_type = args.region_type
         self.region_polygon = args.region_polygon
+        self.speed_predict = args.speed_predict
+        self.mapping_ratio = args.mapping_ratio
+        self.x_ratio = args.x_ratio
+        self.y_ratio = args.y_ratio
         if self.region_type == 'custom':
             assert len(
                 self.region_polygon
@@ -271,7 +273,9 @@ class PipePredictor(object):
         do_break_in_counting = args.do_break_in_counting
         region_type = args.region_type
         region_polygon = args.region_polygon
-
+        speed_predict = args.speed_predict
+        mapping_ratio = args.mapping_ratio
+        x_ratio = args.x_ratio
         # general module for pphuman and ppvehicle
         self.with_mot = cfg.get('MOT', False)['enable'] if cfg.get(
             'MOT', False) else False
@@ -339,6 +343,10 @@ class PipePredictor(object):
         self.do_break_in_counting = do_break_in_counting
         self.region_type = region_type
         self.region_polygon = region_polygon
+        self.speed_predict = speed_predict
+        self.mapping_ratio = args.mapping_ratio
+        self.x_ratio = args.x_ratio
+        self.y_ratio = args.y_ratio
 
         self.warmup_frame = self.cfg['warmup_frame']
         self.pipeline_res = Result()
@@ -367,19 +375,6 @@ class PipePredictor(object):
                     model_dir, device, run_mode, batch_size, trt_min_shape,
                     trt_max_shape, trt_opt_shape, trt_calib_mode, cpu_threads,
                     enable_mkldnn)
-
-            if self.with_vehicle_attr:
-                vehicleattr_cfg = self.cfg['VEHICLE_ATTR']
-                model_dir = model_dir_dict['VEHICLE_ATTR']
-                batch_size = vehicleattr_cfg['batch_size']
-                color_threshold = vehicleattr_cfg['color_threshold']
-                type_threshold = vehicleattr_cfg['type_threshold']
-                basemode = vehicleattr_cfg['basemode']
-                self.modebase[basemode] = True
-                self.vehicle_attr_predictor = VehicleAttr(
-                    model_dir, device, run_mode, batch_size, trt_min_shape,
-                    trt_max_shape, trt_opt_shape, trt_calib_mode, cpu_threads,
-                    enable_mkldnn, color_threshold, type_threshold)
 
         else:
             if self.with_human_attr:
@@ -487,25 +482,6 @@ class PipePredictor(object):
                         use_dark=False)
                     self.kpt_buff = KeyPointBuff(skeleton_action_frames)
 
-            if self.with_vehicleplate:
-                vehicleplate_cfg = self.cfg['VEHICLE_PLATE']
-                self.vehicleplate_detector = PlateRecognizer(args,
-                                                             vehicleplate_cfg)
-                basemode = vehicleplate_cfg['basemode']
-                self.modebase[basemode] = True
-
-            if self.with_vehicle_attr:
-                vehicleattr_cfg = self.cfg['VEHICLE_ATTR']
-                model_dir = model_dir_dict['VEHICLE_ATTR']
-                batch_size = vehicleattr_cfg['batch_size']
-                color_threshold = vehicleattr_cfg['color_threshold']
-                type_threshold = vehicleattr_cfg['type_threshold']
-                basemode = vehicleattr_cfg['basemode']
-                self.modebase[basemode] = True
-                self.vehicle_attr_predictor = VehicleAttr(
-                    model_dir, device, run_mode, batch_size, trt_min_shape,
-                    trt_max_shape, trt_opt_shape, trt_calib_mode, cpu_threads,
-                    enable_mkldnn, color_threshold, type_threshold)
 
             if self.with_mtmct:
                 reid_cfg = self.cfg['REID']
@@ -675,8 +651,9 @@ class PipePredictor(object):
         frame_id = 0
 
         entrance, records, center_traj = None, None, None
-        if self.draw_center_traj:
+        if self.draw_center_traj or self.speed_predict:
             center_traj = [{}]
+            speed_dict = {}
         id_set = set()
         interval_id_set = set()
         in_id_list = list()
@@ -751,8 +728,8 @@ class PipePredictor(object):
                     if self.cfg['visual']:
                         _, _, fps = self.pipe_timer.get_total_time()
                         im = self.visualize_video(frame, mot_res, frame_id, fps,
-                                                  entrance, records,
-                                                  center_traj)  # visualize
+                                                      entrance, records,
+                                                      center_traj)  # visualize
                         writer.write(im)
                         if self.file_name is None:  # use camera_id
                             cv2.imshow('Paddle-Pipeline', im)
@@ -764,14 +741,63 @@ class PipePredictor(object):
                 crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
                     frame_rgb, mot_res)
 
-                if self.with_vehicleplate:
+                if self.speed_predict:
                     if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['vehicleplate'].start()
-                    platelicense = self.vehicleplate_detector.get_platelicense(
-                        crop_input)
+                        self.pipe_timer.module_time['speed_predict'].start()
+                    speed_result = []
+                    index2id = {}
+                    temp, boxes, scores, ids = mot_result
+                    for i in range(len(ids)):
+                        id = ids[i]
+                        index2id[i] = id
+                        try:
+                            value = center_traj[0].get(id)
+                            location = value[-1]
+                            re_location = value[-2]
+                            x_ratio, y_ratio = None, None
+                            if self.x_ratio or self.y_ratio:
+                                if len(self.x_ratio) % 3 != 0 or len(self.y_ratio) % 3 != 0:
+                                    raise "'x_ratio' or 'y_ratio' format error!"
+                                for j in range(len(self.x_ratio) // 3):
+                                    if (self.x_ratio[j * 3] >= location[0] >= self.x_ratio[j * 3 + 1]) or (
+                                            self.x_ratio[j * 3] <= location[0] <= self.x_ratio[j * 3 + 1]):
+                                        x_ratio = self.x_ratio[j * 3 + 2]/abs(self.x_ratio[j * 3]-self.x_ratio[j * 3 + 1])
+                                        break
+                                for j in range(len(self.y_ratio) // 3):
+                                    if (self.y_ratio[j * 3] >= location[1] >= self.y_ratio[j * 3 + 1]) or (
+                                            self.y_ratio[j * 3] <= location[1] <= self.y_ratio[j * 3 + 1]):
+                                        y_ratio = self.y_ratio[j * 3 + 2]/abs(self.y_ratio[j * 3]-self.y_ratio[j * 3 + 1])
+                                        break
+
+                                if (not x_ratio) and y_ratio:
+                                    x_ratio = y_ratio
+                                elif (not y_ratio) and x_ratio:
+                                    y_ratio = x_ratio
+                                else:
+                                    x_ratio, y_ratio = 1, 1
+                            elif self.mapping_ratio:
+                                x_ratio = self.mapping_ratio[0] / width
+                                y_ratio = self.mapping_ratio[1] / height
+                            else:
+                                x_ratio = 1
+                                y_ratio = 1
+                            speed = pow(pow(location[0]*x_ratio - re_location[0]*x_ratio, 2) +
+                                        pow(location[1]*y_ratio - re_location[1]*y_ratio, 2), 0.5)
+                            if not speed_dict.get(id):
+                                speed_dict[id] = [speed*fps]
+                            else:
+                                speed_dict[id].append(speed*fps)
+                            if x_ratio == y_ratio == 1:
+                                speed = "speed:{:.2f}pixel/s".format(speed * fps)
+                            else:
+                                speed = "speed:{:.2f}m/s".format(speed * fps)
+                        except:
+                            speed = "speed:unkown"
+                        speed_result.append([speed])
+                    attr_res = {'output': speed_result, 'speed_dict': speed_dict, 'index2id': index2id}
                     if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['vehicleplate'].end()
-                    self.pipeline_res.update(platelicense, 'vehicleplate')
+                        self.pipe_timer.module_time['speed_predict'].end()
+                    self.pipeline_res.update(attr_res, 'speed_predict')
 
                 if self.with_human_attr:
                     if frame_id > self.warmup_frame:
@@ -781,15 +807,6 @@ class PipePredictor(object):
                     if frame_id > self.warmup_frame:
                         self.pipe_timer.module_time['attr'].end()
                     self.pipeline_res.update(attr_res, 'attr')
-
-                if self.with_vehicle_attr:
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['vehicle_attr'].start()
-                    attr_res = self.vehicle_attr_predictor.predict_image(
-                        crop_input, visual=False)
-                    if frame_id > self.warmup_frame:
-                        self.pipe_timer.module_time['vehicle_attr'].end()
-                    self.pipeline_res.update(attr_res, 'vehicle_attr')
 
                 if self.with_idbased_detaction:
                     if frame_id > self.warmup_frame:
@@ -917,8 +934,8 @@ class PipePredictor(object):
             if self.cfg['visual']:
                 _, _, fps = self.pipe_timer.get_total_time()
                 im = self.visualize_video(frame, self.pipeline_res, frame_id,
-                                          fps, entrance, records,
-                                          center_traj)  # visualize
+                                              fps, entrance, records,
+                                              center_traj)  # visualize
                 writer.write(im)
                 if self.file_name is None:  # use camera_id
                     cv2.imshow('Paddle-Pipeline', im)
@@ -971,27 +988,15 @@ class PipePredictor(object):
                 do_break_in_counting=self.do_break_in_counting,
                 entrance=entrance,
                 records=records,
-                center_traj=center_traj)
+                center_traj=center_traj,
+                draw_center_traj=self.draw_center_traj
+            )
 
         human_attr_res = result.get('attr')
         if human_attr_res is not None:
             boxes = mot_res['boxes'][:, 1:]
             human_attr_res = human_attr_res['output']
             image = visualize_attr(image, human_attr_res, boxes)
-            image = np.array(image)
-
-        vehicle_attr_res = result.get('vehicle_attr')
-        if vehicle_attr_res is not None:
-            boxes = mot_res['boxes'][:, 1:]
-            vehicle_attr_res = vehicle_attr_res['output']
-            image = visualize_attr(image, vehicle_attr_res, boxes)
-            image = np.array(image)
-
-        vehicleplate_res = result.get('vehicleplate')
-        if vehicleplate_res:
-            boxes = mot_res['boxes'][:, 1:]
-            image = visualize_vehicleplate(image, vehicleplate_res['plate'],
-                                           boxes)
             image = np.array(image)
 
         kpt_res = result.get('kpt')
@@ -1001,6 +1006,12 @@ class PipePredictor(object):
                 kpt_res,
                 visual_thresh=self.cfg['kpt_thresh'],
                 returnimg=True)
+
+        speed_predict_res = result.get('speed_predict')
+        if speed_predict_res is not None:
+            boxes = mot_res['boxes'][:, 1:]
+            image = visualize_speed(image, speed_predict_res, boxes)
+            image = np.array(image)
 
         video_action_res = result.get('video_action')
         if video_action_res is not None:
@@ -1018,13 +1029,14 @@ class PipePredictor(object):
                 video_action_score=video_action_score,
                 video_action_text="Fight")
 
+
         visual_helper_for_display = []
         action_to_display = []
 
         skeleton_action_res = result.get('skeleton_action')
         if skeleton_action_res is not None:
             visual_helper_for_display.append(self.skeleton_action_visual_helper)
-            action_to_display.append("Falling")
+            action_to_display.append(" ")
 
         det_action_res = result.get('det_action')
         if det_action_res is not None:

@@ -135,6 +135,34 @@ def argsparser():
         "--draw_center_traj",
         action='store_true',
         help="Whether drawing the trajectory of center")
+    parser.add_argument(
+        "--speed_predict",
+        action='store_true',
+        help="Whether predicting the speed")
+    parser.add_argument(
+        "--mapping_ratio",
+        nargs='+',
+        type=float,
+        default=[],
+        help="The horizontal width of the camera pixel and the horizontal width of the field "
+        "of view of the actual scene. (x,y) two values represent the actual "
+        "transverse width respectively")
+    parser.add_argument(
+        "--x_ratio",
+        nargs='+',
+        type=float,
+        default=[],
+        help="X-axis segmented distance mapping, "
+             "every group of three float (x1, x2, dis1) "
+             "represents the actual distance mapped between x1 and x2")
+    parser.add_argument(
+        "--y_ratio",
+        nargs='+',
+        type=float,
+        default=[],
+        help="Y-axis segmented distance mapping, "
+             "every group of three float (y1, y2, dis1) "
+             "represents the actual distance mapped between y1 and y2")
     return parser
 
 
@@ -179,8 +207,7 @@ class PipeTimer(Times):
             'reid': Times(),
             'det_action': Times(),
             'cls_action': Times(),
-            'vehicle_attr': Times(),
-            'vehicleplate': Times()
+            'speed_predict': Times()
         }
         self.img_num = 0
 

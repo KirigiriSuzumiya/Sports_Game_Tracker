@@ -365,6 +365,66 @@ def visualize_attr(im, results, boxes=None):
     return im
 
 
+def visualize_speed(im, results, boxes=None):
+    index2id = results["index2id"]
+    speed_dict = results["speed_dict"]
+    results = results["output"]
+    if isinstance(im, str):
+        im = Image.open(im)
+        im = np.ascontiguousarray(np.copy(im))
+        im = cv2.cvtColor(im, cv2.COLOR_RGB2BGR)
+    else:
+        im = np.ascontiguousarray(np.copy(im))
+
+    im_h, im_w = im.shape[:2]
+    text_scale = max(0.5, im.shape[0] / 3000.)
+    text_thickness = 1
+    line_inter = im.shape[0] / 40.
+    for i, res in enumerate(results):
+        if boxes is None:
+            text_w = 3
+            text_h = 1
+        else:
+            box = boxes[i]
+            text_w = int(box[2]) + 3
+            text_h = int(box[3])
+        for text in res:
+            text_h += int(line_inter)
+            text_loc = (text_w, text_h)
+            cv2.putText(
+                im,
+                text,
+                text_loc,
+                cv2.FONT_ITALIC,
+                text_scale, (0, 255, 255),
+                thickness=text_thickness)
+        id = index2id[i]
+        try:
+            speed_list = speed_dict[id]
+        except:
+            return im
+        if len(speed_list) >= 100:
+            speed_list = speed_list[-100:]
+
+        graph_h = text_h
+        graph_w = text_w
+        height = abs(box[5]) / 2
+        pts = []
+        for j in range(len(speed_list)):
+            pt_w = int(graph_w+j)
+            pt_h = int(graph_h + height * (max(speed_list) - speed_list[j]) / (max(speed_list)-(min(speed_list)-0.00001)))
+            pts.append((pt_w, pt_h))
+            if j >= 1:
+                cv2.line(
+                    im,
+                    pts[j],
+                    pts[j-1],
+                    (0, 255, 255),
+                    thickness=text_thickness
+                )
+    return im
+
+
 def visualize_action(im,
                      mot_boxes,
                      action_visual_collector=None,

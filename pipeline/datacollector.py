@@ -29,7 +29,8 @@ class Result(object):
             'det_action': dict(),
             'cls_action': dict(),
             'vehicleplate': dict(),
-            'vehicle_attr': dict()
+            'vehicle_attr': dict(),
+            'speed_predict': dict()
         }
 
     def update(self, res, name):

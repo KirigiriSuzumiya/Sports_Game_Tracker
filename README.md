@@ -1,6 +1,6 @@
-# Sports_Game_tracker 球赛多主体识别追踪
+# Sports_Game_tracker 体育赛事多主体识别追踪
 
-**Sports_Game_tracker是基于飞桨深度学习框架的实时行人分析工具[PP-Human](https://github.com/PaddlePaddle/PaddleDetection/tree/develop/deploy/pipeline)进行功能扩展的球赛识别追踪工具，目前的功能有：足球球员追踪、足球控球检测、足球检测。**
+**Sports_Game_tracker是基于飞桨深度学习框架的实时行人分析工具[PP-Human](https://github.com/PaddlePaddle/PaddleDetection/tree/develop/deploy/pipeline)进行功能扩展的赛事识别追踪工具，目前的功能有：运动员追踪、足球控球检测、足球检测、动作关键点检测、运动速度粗算**
 
 
 
@@ -14,7 +14,7 @@
 
 PaddlePaddle和Sports_Game_tracker安装
 
-```
+```shell
 # PaddlePaddle CUDA10.1
 python -m pip install paddlepaddle-gpu==2.2.2.post101 -f https://www.paddlepaddle.org.cn/whl/linux/mkl/avx/stable.html
 
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 ### 1.2 下载模型
 
-前往[模型下载地址](https://aistudio.baidu.com/aistudio/datasetdetail/161855)下载模型，并解压到`model`目录下
+前往[模型下载地址](https://aistudio.baidu.com/aistudio/datasetdetail/161855)下载模型，并解压到[model](model/)目录下
 
 | 功能     | 模型名                            |
 | -------- | --------------------------------- |
@@ -50,12 +50,15 @@ pip install -r requirements.txt
 
 ### 1.3 预测部署
 
-```
+```shell
 # 足球追踪检测
 python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_football.yml --draw_center_traj --video_file=path_to_your_video --device=gpu --output_dir=output/football
 
 #球员追踪及控球检测
 python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_player.yml --video_file=path_to_your_video --device=gpu --output_dir=output/player
+
+#动作追踪与速度粗算
+python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml --video_file=path_to_your_video --device=gpu --output_dir=output/ski/speed --speed_predict
 
 ```
 
@@ -65,18 +68,30 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_player.ym
 
 ### 2.1 配置文件
 
-相关配置位于`pipeline/config/`路径下，功能及配置文件对应表单如下：
+相关配置位于[pipeline/config](pipeline/config/)路径下，功能及配置文件对应表单如下：
 
 | 功能               | 配置文件                       | 追踪配置文件                |
 | ------------------ | ------------------------------ | --------------------------- |
-| 球员追踪与控球检测 | infer_cfg_pphuman_player.yml   | tracker_config_player.yml   |
-| 足球追踪           | infer_cfg_pphuman_football.yml | tracker_config_football.yml |
+| 球员追踪与控球检测 | [infer_cfg_pphuman_player.yml](pipeline/config/infer_cfg_pphuman_player.yml)   | [tracker_config_player.yml](pipeline/config/tracker_config_player.yml)   |
+| 足球追踪           | [infer_cfg_pphuman_football.yml](pipeline/config/infer_cfg_pphuman_football.yml) | [tracker_config_football.yml](pipeline/config/tracker_config_football.yml) |
+| 滑雪动作追踪       | [infer_cfg_pphuman_ski.yml](pipeline/config/infer_cfg_pphuman_ski.yml)      | [tracker_config_player.yml](pipeline/config/tracker_config_player.yml)   |
 
 具体配置及模型替换等参阅：[链接](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/deploy/pipeline/docs/tutorials/QUICK_STARTED.md#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E8%AF%B4%E6%98%8E)
 
 
 
 ### 2.2 参数说明
+
+较PP-Human新增的参数：
+
+| 参数            | 是否必须 | 含义                                                         |
+| --------------- | -------- | ------------------------------------------------------------ |
+| --speed_predict | Option   | 是否开启速度粗算，默认为False，未设置mapping_ratio时显示像素位移速度 |
+| --mapping_ratio | Option   | 视频像素与实际距离对应，默认为None，输入两个浮点数，分别代表x轴与y轴对应的实际距离，如：`--mapping_ratio 30 100`代表视频全宽30米，全高100米。（对有透视变化的视频请勿使用） |
+| --x_ratio       | Option   | x轴像素分段实际距离对应，每三个参数为一组。(x1,x2,dis)代表x1与x2之间映射x轴实际距离dis。如：`--x_ratio 23 45.5 5 `代表23到45.5之间实际距离为5米 |
+| --y_ratio       | Option   | y轴像素分段实际距离对应，每三个参数为一组。(y1,y2,dis)代表x1与x2之间映射x轴实际距离dis。如：`--y_ratio 23 45.5 5 `代表23到45.5之间实际距离为5米 |
+
+PP-Human原有的参数：
 
 > 来自PP-Human文档[链接](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/deploy/pipeline/docs/tutorials/QUICK_STARTED.md)
 
@@ -109,7 +124,7 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_player.ym
 
 配置文件：
 
-```
+```yml
 _BASE_: [
   '../datasets/final_dataset-football.yml',
   '../runtime.yml',
@@ -151,7 +166,7 @@ PPYOLOEHead:
 
 配置文件：
 
-```
+```yml
 _BASE_: [
   '../datasets/football.yml',
   '../runtime.yml',
