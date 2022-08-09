@@ -36,7 +36,7 @@ from python.infer import Detector, DetectorPicoDet
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image, ShortSizeScale
-from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed
+from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
@@ -116,6 +116,7 @@ class Pipeline(object):
         self.mapping_ratio = args.mapping_ratio
         self.x_ratio = args.x_ratio
         self.y_ratio = args.y_ratio
+        self.team_clas = args.team_clas
         if self.region_type == 'custom':
             assert len(
                 self.region_polygon
@@ -276,6 +277,8 @@ class PipePredictor(object):
         speed_predict = args.speed_predict
         mapping_ratio = args.mapping_ratio
         x_ratio = args.x_ratio
+        y_ratio = args.y_ratio
+        team_clas = args.team_clas
         # general module for pphuman and ppvehicle
         self.with_mot = cfg.get('MOT', False)['enable'] if cfg.get(
             'MOT', False) else False
@@ -347,6 +350,7 @@ class PipePredictor(object):
         self.mapping_ratio = args.mapping_ratio
         self.x_ratio = args.x_ratio
         self.y_ratio = args.y_ratio
+        self.team_clas = args.team_clas
 
         self.warmup_frame = self.cfg['warmup_frame']
         self.pipeline_res = Result()
@@ -799,6 +803,44 @@ class PipePredictor(object):
                         self.pipe_timer.module_time['speed_predict'].end()
                     self.pipeline_res.update(attr_res, 'speed_predict')
 
+                if self.team_clas:
+                    color = {
+                        "black": {"color_lower": np.array([0, 0, 0]), "color_upper": np.array([180, 255, 46])},
+                        "white": {"color_lower": np.array([0, 0, 221]), "color_upper": np.array([180, 30, 255])},
+                        "blue": {"color_lower": np.array([100, 43, 46]), "color_upper": np.array([124, 255, 255])},
+                        "red": {"color_lower": np.array([156, 43, 46]), "color_upper": np.array([180, 255, 255])},
+                        "yellow": {"color_lower": np.array([26, 43, 46]), "color_upper": np.array([34, 255, 255])},
+                        "green": {"color_lower": np.array([35, 43, 46]), "color_upper": np.array([77, 255, 255])},
+                        "purple": {"color_lower": np.array([125, 43, 46]), "color_upper": np.array([155, 255, 255])},
+                        "orange": {"color_lower": np.array([11, 43, 46]), "color_upper": np.array([25, 255, 255])}
+                    }
+                    if len(self.team_clas) != 4:
+                        raise "team_clas input error"
+                    team_list = [[self.team_clas[0], self.team_clas[1]], [self.team_clas[2], self.team_clas[3]]]
+                    team_result = []
+                    crop_input_team, temp0, temp1 = crop_image_with_mot(
+                        frame_rgb, mot_res, expand=False)
+
+                    for i in crop_input_team:
+                        ori_img = i
+                        img = cv2.cvtColor(ori_img, cv2.COLOR_RGB2HSV)  # 转成HSV
+                        color_img_0 = cv2.inRange(img, color[team_list[0][0]]["color_lower"],
+                                                  color[team_list[0][0]]["color_upper"])  # 筛选出符合的颜色
+                        color_img_1 = cv2.inRange(img, color[team_list[1][0]]["color_lower"],
+                                                  color[team_list[1][0]]["color_upper"])  # 筛选出符合的颜色
+                        img_class_0 = color_img_0.flatten().tolist()
+                        img_class_1 = color_img_1.flatten().tolist()
+                        ratio_0 = img_class_0.count(255) / len(img_class_0)
+                        ratio_1 = img_class_1.count(255) / len(img_class_1)
+                        if ratio_0 > ratio_1 and ratio_0 > 0:
+                            team_result.append([team_list[0][1]])
+                        elif ratio_1 > 0:
+                            team_result.append([team_list[1][1]])
+                        else:
+                            team_result.append(['unknown'])
+                    attr_res = {'output': team_result}
+                    self.pipeline_res.update(attr_res, 'team_clas')
+
                 if self.with_human_attr:
                     if frame_id > self.warmup_frame:
                         self.pipe_timer.module_time['attr'].start()
@@ -989,7 +1031,7 @@ class PipePredictor(object):
                 entrance=entrance,
                 records=records,
                 center_traj=center_traj,
-                draw_center_traj=self.draw_center_traj
+                draw_center_traj=self.draw_center_traj,
             )
 
         human_attr_res = result.get('attr')
@@ -1011,6 +1053,12 @@ class PipePredictor(object):
         if speed_predict_res is not None:
             boxes = mot_res['boxes'][:, 1:]
             image = visualize_speed(image, speed_predict_res, boxes)
+            image = np.array(image)
+
+        team_clas_res = result.get('team_clas')
+        if team_clas_res is not None:
+            boxes = mot_res['boxes'][:, 1:]
+            image = visualize_team(image, team_clas_res, boxes)
             image = np.array(image)
 
         video_action_res = result.get('video_action')

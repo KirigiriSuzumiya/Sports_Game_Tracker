@@ -163,6 +163,14 @@ def argsparser():
         help="Y-axis segmented distance mapping, "
              "every group of three float (y1, y2, dis1) "
              "represents the actual distance mapped between y1 and y2")
+    parser.add_argument(
+        "--team_clas",
+        nargs='+',
+        type=str,
+        default=[],
+        help="Color based team classification, "
+             "receive four parameters(color1, name1, color2, name2),"
+             "The optional color parameters are: [black, white, blue, red, yellow, green, purple, orange]")
     return parser
 
 

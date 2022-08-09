@@ -1,6 +1,6 @@
 # Sports_Game_tracker 体育赛事多主体识别追踪
 
-**Sports_Game_tracker是基于飞桨深度学习框架的实时行人分析工具[PP-Human](https://github.com/PaddlePaddle/PaddleDetection/tree/develop/deploy/pipeline)进行功能扩展的赛事识别追踪工具，目前的功能有：运动员追踪、足球控球检测、足球检测、动作关键点检测、运动速度粗算**
+**Sports_Game_tracker是基于飞桨深度学习框架的实时行人分析工具[PP-Human](https://github.com/PaddlePaddle/PaddleDetection/tree/develop/deploy/pipeline)进行功能扩展的赛事识别追踪工具，目前的功能有：运动员追踪、足球控球检测、足球检测、动作关键点检测、运动速度粗算、球员队伍分类**
 
 
 
@@ -76,7 +76,7 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml -
 | 足球追踪           | [infer_cfg_pphuman_football.yml](pipeline/config/infer_cfg_pphuman_football.yml) | [tracker_config_football.yml](pipeline/config/tracker_config_football.yml) |
 | 滑雪动作追踪       | [infer_cfg_pphuman_ski.yml](pipeline/config/infer_cfg_pphuman_ski.yml)      | [tracker_config_player.yml](pipeline/config/tracker_config_player.yml)   |
 
-具体配置及模型替换等参阅：[链接](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/deploy/pipeline/docs/tutorials/QUICK_STARTED.md#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E8%AF%B4%E6%98%8E)
+具体配置及模型替换等参阅：[链接](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/deploy/pipeline/docs/tutorials/PPHuman_QUICK_STARTED.md#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E8%AF%B4%E6%98%8E)
 
 
 
@@ -90,10 +90,11 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml -
 | --mapping_ratio | Option   | 视频像素与实际距离对应，默认为None，输入两个浮点数，分别代表x轴与y轴对应的实际距离，如：`--mapping_ratio 30 100`代表视频全宽30米，全高100米。（对有透视变化的视频请勿使用） |
 | --x_ratio       | Option   | x轴像素分段实际距离对应，每三个参数为一组。(x1,x2,dis)代表x1与x2之间映射x轴实际距离dis。如：`--x_ratio 23 45.5 5 `代表23到45.5之间实际距离为5米 |
 | --y_ratio       | Option   | y轴像素分段实际距离对应，每三个参数为一组。(y1,y2,dis)代表x1与x2之间映射x轴实际距离dis。如：`--y_ratio 23 45.5 5 `代表23到45.5之间实际距离为5米 |
+| --team_clas     | Option   | 基于颜色识别的运动员球队分类，接受4个字符串变量（color1,name1,color2,name2）。其中颜色接受的参数为：[black, white, blue, red, yellow, green, purple, orange]。如：`--team_clas white RMA red LIV` |
 
 PP-Human原有的参数：
 
-> 来自PP-Human文档[链接](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/deploy/pipeline/docs/tutorials/QUICK_STARTED.md)
+> 来自PP-Human文档[链接](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/deploy/pipeline/docs/tutorials/PPHuman_QUICK_STARTED.md)
 
 | 参数                   | 是否必须 | 含义                                                         |
 | ---------------------- | -------- | ------------------------------------------------------------ |
@@ -120,7 +121,7 @@ PP-Human原有的参数：
 
 使用PP-yoloe模型训练，数据集链接：[足球赛环境下足球目标标注 - 飞桨AI Studio (baidu.com)](https://aistudio.baidu.com/aistudio/datasetdetail/156077)
 
-训练教程可参考：[多目标跟踪任务二次开发](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/docs/advanced_tutorials/customization/mot.md)
+训练教程可参考：[多目标跟踪任务二次开发](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/docs/advanced_tutorials/customization/pphuman_mot.md)
 
 配置文件：
 

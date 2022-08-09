@@ -30,7 +30,8 @@ class Result(object):
             'cls_action': dict(),
             'vehicleplate': dict(),
             'vehicle_attr': dict(),
-            'speed_predict': dict()
+            'speed_predict': dict(),
+            'team_clas': dict(),
         }
 
     def update(self, res, name):
