@@ -4,9 +4,9 @@
 
 
 
-![test-tracker](README.assets/test-tracker.gif)
-
-![](README.assets/full-test 00_04_07-00_04_12.gif)
+![test-tracker](README.assets/football.gif)
+![](README.assets/football1.gif)
+![](README.assets/ski.gif)
 
 ## 1. 快速开始
 
@@ -60,6 +60,8 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_player.ym
 #动作追踪与速度粗算
 python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml --video_file=path_to_your_video --device=gpu --output_dir=output/ski/speed --speed_predict
 
+#单人滑雪追踪
+python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml --video_file=path_to_your_video --device=gpu --output_dir=output/ski --singleplayer skier
 ```
 
 
@@ -70,11 +72,11 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml -
 
 相关配置位于[pipeline/config](pipeline/config/)路径下，功能及配置文件对应表单如下：
 
-| 功能               | 配置文件                       | 追踪配置文件                |
-| ------------------ | ------------------------------ | --------------------------- |
-| 球员追踪与控球检测 | [infer_cfg_pphuman_player.yml](pipeline/config/infer_cfg_pphuman_player.yml)   | [tracker_config_player.yml](pipeline/config/tracker_config_player.yml)   |
+| 功能               | 配置文件                                                     | 追踪配置文件                                                 |
+| ------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 球员追踪与控球检测 | [infer_cfg_pphuman_player.yml](pipeline/config/infer_cfg_pphuman_player.yml) | [tracker_config_player.yml](pipeline/config/tracker_config_player.yml) |
 | 足球追踪           | [infer_cfg_pphuman_football.yml](pipeline/config/infer_cfg_pphuman_football.yml) | [tracker_config_football.yml](pipeline/config/tracker_config_football.yml) |
-| 滑雪动作追踪       | [infer_cfg_pphuman_ski.yml](pipeline/config/infer_cfg_pphuman_ski.yml)      | [tracker_config_player.yml](pipeline/config/tracker_config_player.yml)   |
+| 滑雪追踪           | [infer_cfg_pphuman_ski.yml](pipeline/config/infer_cfg_pphuman_ski.yml) | [tracker_config_player.yml](pipeline/config/tracker_config_player.yml) |
 
 具体配置及模型替换等参阅：[链接](https://github.com/PaddlePaddle/PaddleDetection/blob/develop/deploy/pipeline/docs/tutorials/PPHuman_QUICK_STARTED.md#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E8%AF%B4%E6%98%8E)
 
@@ -91,6 +93,7 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml -
 | --x_ratio       | Option   | x轴像素分段实际距离对应，每三个参数为一组。(x1,x2,dis)代表x1与x2之间映射x轴实际距离dis。如：`--x_ratio 23 45.5 5 `代表23到45.5之间实际距离为5米 |
 | --y_ratio       | Option   | y轴像素分段实际距离对应，每三个参数为一组。(y1,y2,dis)代表x1与x2之间映射x轴实际距离dis。如：`--y_ratio 23 45.5 5 `代表23到45.5之间实际距离为5米 |
 | --team_clas     | Option   | 基于颜色识别的运动员球队分类，接受4个字符串变量（color1,name1,color2,name2）。其中颜色接受的参数为：[black, white, blue, red, yellow, green, purple, orange]。如：`--team_clas white RMA red LIV` |
+| --singleplayer  | Option   | 是否开启单人过滤，默认为None，输入一个字符串代表运动员名称，主要过滤站立的观众。需要事先打开骨骼点检测功能。如：`--singleplayer ZhangSan` |
 
 PP-Human原有的参数：
 

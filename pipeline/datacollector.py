@@ -32,6 +32,7 @@ class Result(object):
             'vehicle_attr': dict(),
             'speed_predict': dict(),
             'team_clas': dict(),
+            'singleplayer': dict(),
         }
 
     def update(self, res, name):

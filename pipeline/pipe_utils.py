@@ -171,6 +171,11 @@ def argsparser():
         help="Color based team classification, "
              "receive four parameters(color1, name1, color2, name2),"
              "The optional color parameters are: [black, white, blue, red, yellow, green, purple, orange]")
+    parser.add_argument(
+        "--singleplayer",
+        type=str,
+        default="",
+        help="using the single player mode, input a str as name of the player")
     return parser
 
 

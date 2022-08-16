@@ -331,6 +331,86 @@ def visualize_pose(imgfile,
     plt.close()
 
 
+last_id = None
+temp_id = [0, 0]
+last_loc = []
+
+def visualize_singleplayer(im, results, name, boxes=None, singleplayer=None):
+
+    index2id = singleplayer['index2id']
+    re_skeletons = []
+    re_scores = []
+    index_list = []
+    index_vis = []
+    global last_loc, last_id, temp_id
+    if len(last_loc) == 0:
+        last_loc = [im.shape[0]/2, im.shape[1]/2]
+    im = cv2.imread(im) if isinstance(im, str) else im
+    skeletons, scores = results['keypoint']
+    skeletons = np.array(skeletons)
+    for i, box in enumerate(boxes):
+        left_v1 = skeletons[i][5][:-1] - skeletons[i][11][:-1]
+        left_v2 = skeletons[i][11][:-1] - skeletons[i][13][:-1]
+        right_v1 = skeletons[i][6][:-1] - skeletons[i][12][:-1]
+        right_v2 = skeletons[i][12][:-1] - skeletons[i][14][:-1]
+        vector_dot_product = np.dot(left_v1, left_v2)
+        arccos = np.arccos(vector_dot_product / (np.linalg.norm(left_v1) * np.linalg.norm(left_v2)))
+        left_angle = np.degrees(arccos)
+        vector_dot_product = np.dot(right_v1, right_v2)
+        arccos = np.arccos(vector_dot_product / (np.linalg.norm(right_v1) * np.linalg.norm(right_v2)))
+        right_angle = np.degrees(arccos)
+        text_scale = max(0.5, im.shape[0] / 3000.)
+        # (left_angle <= 20 and right_angle <= 20) or
+        if (box[5] / box[4] >= 1.9 and (left_angle <= 25 or right_angle <= 25) or scores[i][0] <= 0.7):
+            continue
+        if last_id and index2id.get(i) == last_id:
+            id_score = 100
+        else:
+            id_score = 0
+        box_score = left_angle/180 + right_angle/180 + scores[i][0] + id_score + (box[4]/box[5])*2
+        index_list.append([i, box_score])
+    index_list.sort(key=lambda x: x[1])
+    for rank, i in enumerate(index_list):
+        i = i[0]
+        box = boxes[i]
+        if not last_id:
+            last_id = index2id.get(i)
+        if index2id.get(i) != last_id:
+            if temp_id[0] == index2id.get(i):
+                temp_id = [index2id.get(i), temp_id[1]+1]
+                if temp_id[1] >= 10:
+                    temp_id[1] = 0
+                    last_id = index2id.get(i)
+                else:
+                    break
+            else:
+                temp_id = [index2id.get(i), 1]
+                break
+
+        cv2.rectangle(
+            im,
+            (int(box[2]), int(box[3])),
+            (int(box[2] + box[4]), int(box[3] + box[5])),
+            [0, 0, 255],
+            thickness=3
+        )
+        text_scale = max(0.5, im.shape[0] / 3000.)
+        cv2.putText(
+            im,
+            " Player:"+name,
+            (int(box[2]), int(box[3]-40)),
+            cv2.FONT_ITALIC,
+            text_scale*2, (0, 255, 255),
+            thickness=2)
+
+        re_skeletons.append(results['keypoint'][0][i])
+        re_scores.append(results['keypoint'][1][i])
+        index_vis.append(i)
+        break
+    im = visualize_pose(im, {'keypoint': [re_skeletons, re_scores]}, returnimg=True)
+    return im, index_vis
+
+
 def visualize_attr(im, results, boxes=None):
     if isinstance(im, str):
         im = Image.open(im)
@@ -365,7 +445,7 @@ def visualize_attr(im, results, boxes=None):
     return im
 
 
-def visualize_speed(im, results, boxes=None):
+def visualize_speed(im, results, boxes=None, index_list=None):
     index2id = results["index2id"]
     speed_dict = results["speed_dict"]
     results = results["output"]
@@ -381,6 +461,9 @@ def visualize_speed(im, results, boxes=None):
     text_thickness = 1
     line_inter = im.shape[0] / 40.
     for i, res in enumerate(results):
+        if index_list is not None:
+            if i not in index_list:
+                continue
         if boxes is None:
             text_w = 3
             text_h = 1
@@ -389,42 +472,43 @@ def visualize_speed(im, results, boxes=None):
             text_w = int(box[2]) + 3
             text_h = int(box[3])
         for text in res:
-            text_h += int(line_inter)
+            text_h = text_h - 10
             text_loc = (text_w, text_h)
             cv2.putText(
                 im,
                 text,
                 text_loc,
                 cv2.FONT_ITALIC,
-                text_scale, (0, 255, 255),
-                thickness=text_thickness)
+                text_scale*2, (0, 255, 255),
+                thickness=text_thickness*2)
         id = index2id[i]
         try:
             speed_list = speed_dict[id]
         except:
             return im
-        if len(speed_list) >= box[4]:
-            speed_list = speed_list[-1*int(box[[4]]):]
+        if len(speed_list) >= box[4]/2:
+            speed_list = speed_list[-1*int(box[4]/2):]
         graph_h = text_h
         graph_w = text_w
-        height = abs(box[5]) / 2
+        height = abs(box[5]) / 4
         pts = []
-        for j in range(len(speed_list)):
-            pt_w = int(graph_w+j)
-            pt_h = int(graph_h + height * (max(speed_list) - speed_list[j]) / (max(speed_list)-(min(speed_list)-0.00001)))
-            pts.append((pt_w, pt_h))
-            if j >= 1:
-                cv2.line(
-                    im,
-                    pts[j],
-                    pts[j-1],
-                    (0, 255, 255),
-                    thickness=text_thickness
-                )
+        # for j in range(len(speed_list)):
+        #     pt_w = int(graph_w+j)
+        #     pt_h = int(graph_h + height * (max(speed_list) - speed_list[j]) / (max(speed_list)-(min(speed_list)-0.00001)))
+        #     pts.append((pt_w, pt_h))
+        #     if j >= 1:
+        #         cv2.line(
+        #             im,
+        #             pts[j],
+        #             pts[j-1],
+        #             (0, 255, 255),
+        #             thickness=text_thickness
+        #         )
     return im
 
 
 def visualize_team(im, results, boxes=None):
+    rect_color = results["color"]
     results = results["output"]
     if isinstance(im, str):
         im = Image.open(im)
@@ -455,10 +539,22 @@ def visualize_team(im, results, boxes=None):
                 cv2.FONT_ITALIC,
                 text_scale, (0, 255, 255),
                 thickness=text_thickness)
-            if text == 'RMA':
+            if text == "unknown":
+                team_color = [0, 0, 0]
+            elif rect_color[text] == 'white':
                 team_color = [255, 255, 255]
-            elif text == 'LIV':
+            elif rect_color[text] == 'blue':
+                team_color = [255, 0, 0]
+            elif rect_color[text] == 'red':
                 team_color = [0, 0, 255]
+            elif rect_color[text] == 'yellow':
+                team_color = [255, 255, 0]
+            elif rect_color[text] == 'green':
+                team_color = [0, 255, 0]
+            elif rect_color[text] == 'purple':
+                team_color = [128, 0, 128]
+            elif rect_color[text] == 'orange':
+                team_color = [255, 165, 0]
             else:
                 team_color = [0, 0, 0]
             cv2.rectangle(
