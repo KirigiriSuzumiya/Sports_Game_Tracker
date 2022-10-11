@@ -176,6 +176,21 @@ def argsparser():
         type=str,
         default="",
         help="using the single player mode, input a str as name of the player")
+    parser.add_argument(
+        "--boating",
+        action='store_true',
+        help="showing the angle of the paddle")
+    parser.add_argument(
+        "--ball_drawing",
+        action='store_true',
+        help="Draw the smooth curve of the ball")
+    parser.add_argument(
+        "--link_player",
+        nargs='+',
+        type=float,
+        default=[],
+        help="hightlight and link the player of given id")
+
     return parser
 
 

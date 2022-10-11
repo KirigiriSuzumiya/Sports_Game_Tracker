@@ -336,18 +336,24 @@ temp_id = [0, 0]
 last_loc = []
 
 def visualize_singleplayer(im, results, name, boxes=None, singleplayer=None):
-
+    define_id = ''
+    if name[-2] == '_':
+        define_id = eval(name[name.rfind('_')+1:])
+        name = name[:name.rfind('_')]
     index2id = singleplayer['index2id']
     re_skeletons = []
     re_scores = []
     index_list = []
     index_vis = []
     global last_loc, last_id, temp_id
+
     if len(last_loc) == 0:
         last_loc = [im.shape[0]/2, im.shape[1]/2]
     im = cv2.imread(im) if isinstance(im, str) else im
     skeletons, scores = results['keypoint']
     skeletons = np.array(skeletons)
+    if define_id:
+        last_id = define_id
     for i, box in enumerate(boxes):
         left_v1 = skeletons[i][5][:-1] - skeletons[i][11][:-1]
         left_v2 = skeletons[i][11][:-1] - skeletons[i][13][:-1]
@@ -367,7 +373,8 @@ def visualize_singleplayer(im, results, name, boxes=None, singleplayer=None):
             id_score = 100
         else:
             id_score = 0
-        box_score = left_angle/180 + right_angle/180 + scores[i][0] + id_score + (box[4]/box[5])*2
+        # box_score = left_angle/180 + right_angle/180 + scores[i][0] + id_score + (box[4]/box[5])*2
+        box_score = (box[4]*box[5])/(im.shape[0]*im.shape[1]) + id_score + abs(box[4]-im.shape[0]*(box[5]-im.shape[1]))
         index_list.append([i, box_score])
     index_list.sort(key=lambda x: x[1])
     for rank, i in enumerate(index_list):
@@ -409,6 +416,57 @@ def visualize_singleplayer(im, results, name, boxes=None, singleplayer=None):
         break
     im = visualize_pose(im, {'keypoint': [re_skeletons, re_scores]}, returnimg=True)
     return im, index_vis
+
+
+def visualize_ball(im, results):
+    results = results['res']
+    coef = np.polyfit(results[0], results[1], 3)
+    func_poly = np.poly1d(coef)
+    x = range(min(results[0]), max(results[0]))
+    y = func_poly(x)
+    for i, w in enumerate(x[:-1]):
+        cv2.line(im,
+                 (int(x[i]), int(y[i])),
+                 (int(x[i+1]), int(y[i+1])),
+                 [255, 255, 255],
+                 thickness=1
+                 )
+    return im
+
+
+def visualize_boating(im, results, boxes=None, index_list=None, singleplayer=None):
+    im = cv2.imread(im) if isinstance(im, str) else im
+    skeletons, scores = results['keypoint']
+    skeletons = np.array(skeletons)
+    for i, box in enumerate(boxes):
+        if index_list:
+            if i not in index_list:
+                continue
+        elif singleplayer:
+            continue
+        left_hand = skeletons[i][9][:-1]
+        right_hand = skeletons[i][10][:-1]
+        vector_1 = left_hand - right_hand
+        vector_2 = (1, 0)
+        vector_dot_product = np.dot(vector_1, vector_2)
+        arccos = np.arccos(vector_dot_product / (np.linalg.norm(vector_1) * np.linalg.norm(vector_2)))
+        angle = np.degrees(arccos)
+        text_scale = max(0.5, im.shape[0] / 3000.)
+        cv2.putText(
+            im,
+            "paddle angle:%.2f" % float(angle),
+            (int(box[2]), int(box[3])),
+            cv2.FONT_ITALIC,
+            text_scale * 1.2, (0, 255, 255),
+            thickness=2)
+        cv2.line(
+            im,
+            (int(left_hand[0]), int(left_hand[1])),
+            (int(right_hand[0]), int(right_hand[1])),
+            [255, 0, 255],
+            thickness=10
+        )
+    return im
 
 
 def visualize_attr(im, results, boxes=None):
