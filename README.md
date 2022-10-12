@@ -2,6 +2,10 @@
 
 **Sports_Game_tracker是基于飞桨深度学习框架的实时行人分析工具[PP-Human](https://github.com/PaddlePaddle/PaddleDetection/tree/develop/deploy/pipeline)进行功能扩展的赛事识别追踪工具集，目前的功能有：运动员追踪、足球控球检测、足球检测、动作关键点检测、运动速度粗算、球员队伍分类、单人环境过滤、划船姿态、滑雪姿态、球员高亮、球类飞行轨迹拟合等**
 
+OpenI启智平台链接：[Learning-Develop-Union/Sports_Game_tracker: Sports_Game_tracker](https://git.openi.org.cn/Learning-Develop-Union/Sports_Game_tracker)
+
+Github链接：[KirigiriSuzumiya/Sports_Game_Tracker: Sports_Game_tracker](https://github.com/KirigiriSuzumiya/Sports_Game_Tracker)
+
 | 功能                   | 效果图                                                      | 所需模型             |
 | ---------------------- | ----------------------------------------------------------- | -------------------- |
 | **球员与足球追踪**     | ![test-tracker](README.assets/football.gif)                 | 球员检测、足球检测   |
@@ -15,7 +19,7 @@
 
 **HIGHLIGHT:更多示例效果可查看项目中的`效果展示`文件夹**
 
-
+或者有**B站视频**展示：[为体育赛事动态可视而生！基于PP-Human的体育视频追踪工具集](https://www.bilibili.com/video/BV1LG4y1n7LV) 
 
 ## 1. 快速开始
 
