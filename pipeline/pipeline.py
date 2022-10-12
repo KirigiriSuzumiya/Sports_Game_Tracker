@@ -38,7 +38,7 @@ from python.infer import Detector, DetectorPicoDet
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image, ShortSizeScale
-from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team, visualize_singleplayer, visualize_boating, visualize_ball
+from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team, visualize_singleplayer, visualize_boating, visualize_ball, visualize_link_player
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
@@ -778,11 +778,15 @@ class PipePredictor(object):
 
                 if self.link_player:
                     link_boxes = []
+                    link_crop = []
                     temp, boxes, scores, ids = mot_result
+                    crop_input, _, _ = crop_image_with_mot(
+                        frame_rgb, mot_res, expand=False)
                     for i in range(len(ids)):
                         if ids[i] in self.link_player:
                             link_boxes.append(boxes[i])
-                    self.pipeline_res.update({"result": link_boxes}, "link_player")
+                            link_crop.append(crop_input[i])
+                    self.pipeline_res.update({"result": link_boxes, "crop_input": link_crop}, "link_player")
 
                 if self.ball_drawing:
                     his_location = set()
@@ -1067,7 +1071,6 @@ class PipePredictor(object):
                 self.pipe_timer.img_num += 1
                 self.pipe_timer.total_time.end()
             frame_id += 1
-
             if self.cfg['visual']:
                 _, _, fps = self.pipe_timer.get_total_time()
                 im = self.visualize_video(frame, self.pipeline_res, frame_id,
@@ -1144,6 +1147,10 @@ class PipePredictor(object):
         ball_res = result.get('ball_drawing')
         if self.ball_drawing and ball_res:
             image = visualize_ball(image, ball_res)
+
+        link_res = result.get('link_player')
+        if self.link_player and link_res:
+            image = visualize_link_player(image, link_res)
 
         boating_res = result.get('kpt')
         if boating_res and self.boating:

@@ -1,12 +1,21 @@
-# Sports_Game_tracker 体育赛事多主体识别追踪
+# Sports_Game_tracker 体育赛事视频识别追踪工具集
 
-**Sports_Game_tracker是基于飞桨深度学习框架的实时行人分析工具[PP-Human](https://github.com/PaddlePaddle/PaddleDetection/tree/develop/deploy/pipeline)进行功能扩展的赛事识别追踪工具，目前的功能有：运动员追踪、足球控球检测、足球检测、动作关键点检测、运动速度粗算、球员队伍分类、单人环境过滤**
+**Sports_Game_tracker是基于飞桨深度学习框架的实时行人分析工具[PP-Human](https://github.com/PaddlePaddle/PaddleDetection/tree/develop/deploy/pipeline)进行功能扩展的赛事识别追踪工具集，目前的功能有：运动员追踪、足球控球检测、足球检测、动作关键点检测、运动速度粗算、球员队伍分类、单人环境过滤、划船姿态、滑雪姿态、球员高亮、球类飞行轨迹拟合等**
+
+| 功能                   | 效果图                                                      | 所需模型             |
+| ---------------------- | ----------------------------------------------------------- | -------------------- |
+| **球员与足球追踪**     | ![test-tracker](README.assets/football.gif)                 | 球员检测、足球检测   |
+| **滑雪姿态与单人过滤** | ![](README.assets/ski.gif)                                  | 球员检测、关键点检测 |
+| **球员高亮与链接**     | ![SNMOT-021 00_00_05-00_00_11](README.assets/highlight.gif) | 球员检测、人像分割   |
+| **球类飞行轨迹拟合**   | ![ball](README.assets/ball.gif)                             | 足球检测             |
+| **划船姿态与船桨角度** | ![boat](README.assets/boat.gif)                             | 球员检测、关键点检测 |
+| **更多功能与想法**     | **更多功能锐意开发中~欢迎大家提出需求！！！**               | ……                   |
 
 
 
-![test-tracker](README.assets/football.gif)
-![](README.assets/football1.gif)
-![](README.assets/ski.gif)
+**HIGHLIGHT:更多示例效果可查看项目中的`效果展示`文件夹**
+
+
 
 ## 1. 快速开始
 
@@ -94,6 +103,9 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml -
 | --y_ratio       | Option   | y轴像素分段实际距离对应，每三个参数为一组。(y1,y2,dis)代表x1与x2之间映射x轴实际距离dis。需先开启`--speed_predict`如：`--y_ratio 23 45.5 5 `代表23到45.5之间实际距离为5米 |
 | --team_clas     | Option   | 基于颜色识别的运动员球队分类，接受4个字符串变量（color1,name1,color2,name2）。其中颜色接受的参数为：[black, white, blue, red, yellow, green, purple, orange]。如：`--team_clas white RMA red LIV` |
 | --singleplayer  | Option   | 是否开启单人过滤，默认为None，输入一个字符串代表运动员名称，主要过滤站立的观众。如：`--singleplayer ZhangSan` |
+| --boating       | Option   | 划船场景功能，默认为False，可用于测算手持船桨的角度          |
+| --ball_drawing  | Option   | 统计全局球类检测结果，不分id得进行路径拟合，默认为False      |
+| --link_player   | Option   | 高亮并连接给定id号的运动员，类似电视转播的效果，默认为False  |
 
 PP-Human原有的参数：
 

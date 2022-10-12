@@ -42,7 +42,7 @@ SKELETON_ACTION:
   display_frames: 80
   coord_size: [384, 512]
   basemode: "skeletonbased"
-  enable: True
+  enable: False
 
 ID_BASED_DETACTION:
   model_dir:  model/ppyoloe_crn_s_80e_person_football

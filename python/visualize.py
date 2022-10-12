@@ -20,6 +20,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import math
+from PP_HumanSeg.src.infer import Predictor
 
 
 def visualize_box_mask(im, results, labels, threshold=0.5):
@@ -417,6 +418,44 @@ def visualize_singleplayer(im, results, name, boxes=None, singleplayer=None):
     im = visualize_pose(im, {'keypoint': [re_skeletons, re_scores]}, returnimg=True)
     return im, index_vis
 
+
+
+def visualize_link_player(im, results):
+    crop_input = results["crop_input"]
+    results = results["result"]
+    for i, box in enumerate(results):
+        point = (int((box[0]+box[2]/2)), int(box[1]+box[3]))
+        axes = (int(box[2]/2), int(box[2]/4))
+        cv2.ellipse(im, point, axes, 0, 0, 360, (0, 0, 255), thickness=2)
+        for j in range(i, len(results)):
+            cv2.line(im,
+                     (int((results[i][0]+results[i][2]/2)), int(results[i][1]+results[i][3])),
+                     (int((results[j][0]+results[j][2]/2)), int(results[j][1]+results[j][3])),
+                     (0, 0, 255),
+                     thickness=2
+                     )
+        bg = im[int(box[1]):int(box[1]+box[3]), int(box[0]):int(box[0]+box[2])]
+        cv2.imwrite("crop_old.jpg", cv2.cvtColor(crop_input[i], cv2.COLOR_RGB2BGR))
+        cv2.imwrite("bg.jpg", bg)
+        # print(cv2.imread("crop_old.jpg").shape)
+        # print(cv2.imread("bg.jpg").shape)
+        out_im = predictor.run(cv2.imread("crop_old.jpg"), cv2.imread("bg.jpg"))
+        cv2.imwrite("result.jpg", out_im)
+        im[int(box[1]):int(box[1] + box[3]), int(box[0]):int(box[0] + box[2])] = out_im
+    return im
+
+
+class args_cls(object):
+    use_gpu = True
+    config = os.path.join('python', 'PP_HumanSeg', 'inference_models',
+                          'human_pp_humansegv1_server_512x512_inference_model_with_softmax', 'deploy.yaml')
+    vertical_screen = False
+    test_speed = True
+    use_post_process = True
+    use_optic_flow = True
+
+arg = args_cls()
+predictor = Predictor(arg)
 
 def visualize_ball(im, results):
     results = results['res']

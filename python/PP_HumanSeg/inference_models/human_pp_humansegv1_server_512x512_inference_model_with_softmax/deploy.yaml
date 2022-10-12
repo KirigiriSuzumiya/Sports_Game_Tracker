@@ -1,0 +1,9 @@
+Deploy:
+  model: model.pdmodel
+  params: model.pdiparams
+  transforms:
+  - target_size:
+    - 512
+    - 512
+    type: Resize
+  - type: Normalize
