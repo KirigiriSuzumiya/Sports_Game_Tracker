@@ -190,6 +190,11 @@ def argsparser():
         type=float,
         default=[],
         help="hightlight and link the player of given id")
+    parser.add_argument(
+        "--golf",
+        type=bool,
+        default=False,
+        help="golf style analysis")
 
     return parser
 

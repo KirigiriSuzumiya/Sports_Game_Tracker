@@ -13,6 +13,7 @@ Github链接：[KirigiriSuzumiya/Sports_Game_Tracker: Sports_Game_tracker](https
 | **球员高亮与链接**     | ![SNMOT-021 00_00_05-00_00_11](README.assets/highlight.gif) | 球员检测、人像分割   |
 | **球类飞行轨迹拟合**   | ![ball](README.assets/ball.gif)                             | 足球检测             |
 | **划船姿态与船桨角度** | ![boat](README.assets/boat.gif)                             | 球员检测、关键点检测 |
+| **高尔夫肩髋动作纠正** | ![golf](README.assets/golf.gif)                             | 球员检测、关键点检测 |
 | **更多功能与想法**     | **更多功能锐意开发中~欢迎大家提出需求！！！**               | ……                   |
 
 
@@ -110,6 +111,7 @@ python pipeline\pipeline.py --config pipeline/config/infer_cfg_pphuman_ski.yml -
 | --boating       | Option   | 划船场景功能，默认为False，可用于测算手持船桨的角度          |
 | --ball_drawing  | Option   | 统计全局球类检测结果，不分id得进行路径拟合，默认为False      |
 | --link_player   | Option   | 高亮并连接给定id号的运动员，类似电视转播的效果，默认为False  |
+| --golf          | Option   | 是否开启高尔夫肩髋动作纠正，默认为False                      |
 
 PP-Human原有的参数：
 

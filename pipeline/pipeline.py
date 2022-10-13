@@ -38,7 +38,7 @@ from python.infer import Detector, DetectorPicoDet
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image, ShortSizeScale
-from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team, visualize_singleplayer, visualize_boating, visualize_ball, visualize_link_player
+from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team, visualize_singleplayer, visualize_boating, visualize_ball, visualize_link_player, visualize_golf
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
@@ -361,7 +361,11 @@ class PipePredictor(object):
         self.boating = args.boating
         self.ball_drawing = args.ball_drawing
         self.link_player = args.link_player
-
+        self.golf = args.golf
+        if self.link_player or self.singleplayer or self.team_clas or self.golf:
+            self.no_box_visual = True
+        else:
+            self.no_box_visual = False
         self.warmup_frame = self.cfg['warmup_frame']
         self.pipeline_res = Result()
         self.pipe_timer = PipeTimer()
@@ -1129,7 +1133,7 @@ class PipePredictor(object):
                 records=records,
                 center_traj=center_traj,
                 draw_center_traj=self.draw_center_traj,
-                singleplayer=self.singleplayer
+                singleplayer=self.no_box_visual
             )
 
         index_list = None
@@ -1152,6 +1156,10 @@ class PipePredictor(object):
         if self.link_player and link_res:
             image = visualize_link_player(image, link_res)
 
+        kpt = result.get('kpt')
+        if self.golf:
+            image = visualize_golf(image, kpt)
+
         boating_res = result.get('kpt')
         if boating_res and self.boating:
             boxes = mot_res['boxes'][:, 1:]
@@ -1171,7 +1179,7 @@ class PipePredictor(object):
             image = np.array(image)
 
         kpt_res = result.get('kpt')
-        if (kpt_res is not None) and (not self.singleplayer):
+        if (kpt_res is not None) and (not self.singleplayer) and (not self.golf):
             image = visualize_pose(
                 image,
                 kpt_res,
@@ -1230,9 +1238,9 @@ class PipePredictor(object):
                                      visual_helper_for_display,
                                      action_to_display)
 
-        # cv2.imshow('Paddle-Pipeline', image)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     pass
+        cv2.imshow('Paddle-Pipeline', image)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            pass
         return image
 
     def visualize_image(self, im_files, images, result):

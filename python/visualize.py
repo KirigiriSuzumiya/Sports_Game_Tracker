@@ -457,6 +457,45 @@ class args_cls(object):
 arg = args_cls()
 predictor = Predictor(arg)
 
+
+def visualize_golf(im, kpt):
+    boxes = kpt["bbox"]
+    kpt = kpt["keypoint"][0]
+    for i, box in enumerate(boxes):
+        kpt_now = kpt[i]
+        cv2.line(im,
+                 (int(box[0]), int(box[1])),
+                 (int(box[0]), int(box[3])),
+                 [0, 0, 255],
+                 thickness=3
+                 )
+        cv2.line(im,
+                 (int(box[2]), int(box[1])),
+                 (int(box[2]), int(box[3])),
+                 [0, 0, 255],
+                 thickness=3
+                 )
+        cv2.line(im,
+                 (int(kpt_now[5][0]), int(kpt_now[5][1])),
+                 (int(kpt_now[6][0]), int(kpt_now[6][1])),
+                 [0, 0, 255],
+                 thickness=3
+                 )
+        cv2.line(im,
+                 (int(kpt_now[11][0]), int(kpt_now[11][1])),
+                 (int(kpt_now[12][0]), int(kpt_now[12][1])),
+                 [0, 0, 255],
+                 thickness=3
+                 )
+        cv2.line(im,
+                 (int(kpt_now[5][0]+kpt_now[6][0])//2, int(kpt_now[5][1]+kpt_now[6][1])//2),
+                 (int(kpt_now[11][0]+kpt_now[12][0])//2, int(kpt_now[11][1]+kpt_now[12][1])//2),
+                 [0, 0, 255],
+                 thickness=3
+                 )
+    return im
+
+
 def visualize_ball(im, results):
     results = results['res']
     coef = np.polyfit(results[0], results[1], 3)

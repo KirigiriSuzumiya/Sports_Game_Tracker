@@ -309,19 +309,19 @@ def plot_tracking_dict(image,
             color = get_color(abs(obj_id)) if in_region == False else (0, 0,
                                                                        255)
             if not singleplayer:
-                # cv2.rectangle(
-                #     im,
-                #     intbox[0:2],
-                #     intbox[2:4],
-                #     color=color,
-                #     thickness=line_thickness)
-                # cv2.putText(
-                #     im,
-                #     id_text, (intbox[0], intbox[1] - 25),
-                #     cv2.FONT_ITALIC,
-                #     text_scale,
-                #     color,
-                #     thickness=text_thickness)
+                cv2.rectangle(
+                    im,
+                    intbox[0:2],
+                    intbox[2:4],
+                    color=color,
+                    thickness=line_thickness)
+                cv2.putText(
+                    im,
+                    id_text, (intbox[0], intbox[1] - 25),
+                    cv2.FONT_ITALIC,
+                    text_scale,
+                    color,
+                    thickness=text_thickness)
                 pass
 
             if do_break_in_counting and in_region:
