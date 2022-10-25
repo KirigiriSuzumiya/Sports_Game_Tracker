@@ -195,6 +195,11 @@ def argsparser():
         type=bool,
         default=False,
         help="golf style analysis")
+    parser.add_argument(
+        "--player_recognize",
+        type=bool,
+        default=False,
+        help="whether recognize number of player")
 
     return parser
 

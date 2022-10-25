@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import time
 import traceback
 
 import yaml
@@ -38,7 +39,7 @@ from python.infer import Detector, DetectorPicoDet
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image, ShortSizeScale
-from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team, visualize_singleplayer, visualize_boating, visualize_ball, visualize_link_player, visualize_golf
+from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team, visualize_singleplayer, visualize_boating, visualize_ball, visualize_link_player, visualize_golf, visualize_player_rec
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
@@ -50,6 +51,8 @@ from pphuman.action_infer import SkeletonActionRecognizer, DetActionRecognizer, 
 from pphuman.action_utils import KeyPointBuff, ActionVisualHelper
 from pphuman.reid import ReID
 from pphuman.mtmct import mtmct_process
+
+from numOCR.number_OCR import num_predictor
 
 from download import auto_download_model
 
@@ -277,11 +280,9 @@ class PipePredictor(object):
         region_type = args.region_type
         region_polygon = args.region_polygon
         speed_predict = args.speed_predict
-        mapping_ratio = args.mapping_ratio
-        x_ratio = args.x_ratio
-        y_ratio = args.y_ratio
-        team_clas = args.team_clas
-
+        self.player_recognize = args.player_recognize
+        if self.player_recognize:
+            self.id2num = {}
 
         # general module for pphuman and ppvehicle
         self.with_mot = cfg.get('MOT', False)['enable'] if cfg.get(
@@ -308,7 +309,7 @@ class PipePredictor(object):
                 'ID_BASED_CLSACTION', False) else False
         self.with_mtmct = cfg.get('REID', False)['enable'] if cfg.get(
             'REID', False) else False
-        if args.singleplayer:
+        if args.singleplayer or args.player_recognize:
             self.with_skeleton_action = True
 
         if self.with_skeleton_action:
@@ -321,7 +322,9 @@ class PipePredictor(object):
             print('IDBASED Classification Action Recognition enabled')
         if self.with_mtmct:
             print("MTMCT enabled")
-
+        if self.player_recognize:
+            print("player number OCR enabled")
+            self.player_OCR = num_predictor()
         # only for ppvehicle
         self.with_vehicleplate = cfg.get(
             'VEHICLE_PLATE', False)['enable'] if cfg.get('VEHICLE_PLATE',
@@ -1018,6 +1021,75 @@ class PipePredictor(object):
                         self.skeleton_action_visual_helper.update(
                             skeleton_action_res)
 
+                if self.player_recognize:
+                    index2id = {}
+                    temp, boxes, scores, ids = mot_result
+                    for i in range(len(ids)):
+                        temp_id = ids[i]
+                        index2id[i] = temp_id
+                    if frame_id % 5 == 0:
+                        rec_input = []
+                        for i, kpt in enumerate(kpt_res["keypoint"][0]):
+                            x_min = int(min(kpt[5][0], kpt[6][0], kpt[11][0], kpt[12][0]))
+                            x_max = int(max(kpt[5][0], kpt[6][0], kpt[11][0], kpt[12][0]))
+                            y_min = int(min(kpt[5][1], kpt[6][1], kpt[11][1], kpt[12][1]))
+                            y_max = int(max(kpt[5][1], kpt[6][1], kpt[11][1], kpt[12][1]))
+                            box = [x_min, x_max, y_min, y_max]
+                            for j in range(2):
+                                if box[j] < 0:
+                                    box[j] = 0
+                                if box[j] >= frame.shape[0]:
+                                    box[j] = frame.shape[0] - 1
+                            for j in range(2, 4):
+                                if box[j] < 0:
+                                    box[j] = 0
+                                if box[j] >= frame.shape[1]:
+                                    box[j] = frame.shape[1] - 1
+                            if box[0] == box[1]:
+                                box[1] += 1
+                            if box[2] == box[3]:
+                                box[3] += 1
+                            rec_input.append(frame[box[2]:box[3], box[0]:box[1], :])
+                        OCR_res = self.player_OCR.predict(rec_input)
+                        update_res = []
+                        for i, res in enumerate(OCR_res):
+                            res = res[0]
+                            text = ""
+                            for j in res:
+                                if j.isdigit():
+                                    text = int(j)
+                                    break
+                            player_mot_id = index2id[i]
+                            if text != '':
+                                if self.id2num.get(player_mot_id):
+                                    if text not in self.id2num[player_mot_id]:
+                                        self.id2num[player_mot_id][text] = 1
+                                    else:
+                                        self.id2num[player_mot_id][text] += 1
+                                else:
+                                    self.id2num[player_mot_id] = {text: 1}
+                            num_dict = self.id2num.get(player_mot_id)
+                            if num_dict:
+                                text = list(num_dict.keys())[list(num_dict.values()).index(max(num_dict.values()))]
+                            else:
+                                text = ""
+                            update_res.append(str(text))
+
+                            # cv2.imwrite("%d-%d.png" % (frame_id, i), crop_input[i])
+                            self.pipeline_res.update({"result": update_res, "mot_res": mot_res}, "player_rec")
+                        # print(OCR_res)
+                    else:
+                        update_res = []
+                        for i, kpt in enumerate(kpt_res["keypoint"][0]):
+                            player_mot_id = index2id[i]
+                            num_dict = self.id2num.get(player_mot_id)
+                            if num_dict:
+                                text = list(num_dict.keys())[list(num_dict.values()).index(max(num_dict.values()))]
+                            else:
+                                text = ""
+                            update_res.append(str(text))
+                            self.pipeline_res.update({"result": update_res, "mot_res": mot_res}, "player_rec")
+
                 if self.with_mtmct and frame_id % 10 == 0:
                     crop_input, img_qualities, rects = self.reid_predictor.crop_image_with_mot(
                         frame_rgb, mot_res)
@@ -1147,7 +1219,9 @@ class PipePredictor(object):
                 boxes,
                 result.get('singleplayer')
             )
-
+        if self.player_recognize:
+            player_res = result.get("player_rec")
+            image = visualize_player_rec(image, player_res)
         ball_res = result.get('ball_drawing')
         if self.ball_drawing and ball_res:
             image = visualize_ball(image, ball_res)

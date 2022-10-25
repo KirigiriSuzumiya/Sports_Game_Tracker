@@ -419,6 +419,20 @@ def visualize_singleplayer(im, results, name, boxes=None, singleplayer=None):
     return im, index_vis
 
 
+def visualize_player_rec(im, results):
+    OCR_res = results["result"]
+    mot_res = results["mot_res"]['boxes'].tolist()
+    text_scale = max(0.5, im.shape[0] / 3000.)
+    for i, res in enumerate(OCR_res):
+        cv2.putText(im,
+                    res,
+                    (int(mot_res[i][3]), int(mot_res[i][4])),
+                    cv2.FONT_ITALIC,
+                    text_scale, (0, 255, 255),
+                    thickness=1)
+        pass
+    return im
+
 
 def visualize_link_player(im, results):
     crop_input = results["crop_input"]
@@ -460,8 +474,14 @@ predictor = Predictor(arg)
 
 def visualize_golf(im, kpt):
     boxes = kpt["bbox"]
+    box_area = []
+    for box in boxes:
+        box_area.append((box[1]-box[0])*(box[3]-box[2]))
+    single_index = box_area.index(max(box_area))
     kpt = kpt["keypoint"][0]
     for i, box in enumerate(boxes):
+        if i != single_index:
+            continue
         kpt_now = kpt[i]
         cv2.line(im,
                  (int(box[0]), int(box[1])),
