@@ -1057,7 +1057,7 @@ class PipePredictor(object):
                             text = ""
                             if res.isdigit() and int(res) != 1:
                                 text = int(res)
-                                cv2.imwrite(res+".jpg", rec_input[i])
+                                # cv2.imwrite(res+".jpg", rec_input[i])
                             player_mot_id = index2id[i]
                             if text != '':
                                 if self.id2num.get(player_mot_id):
@@ -1218,9 +1218,11 @@ class PipePredictor(object):
                 boxes,
                 result.get('singleplayer')
             )
-        if self.player_recognize:
-            player_res = result.get("player_rec")
+
+        player_res = result.get("player_rec")
+        if self.player_recognize and player_res:
             image = visualize_player_rec(image, player_res)
+
         ball_res = result.get('ball_drawing')
         if self.ball_drawing and ball_res:
             image = visualize_ball(image, ball_res)

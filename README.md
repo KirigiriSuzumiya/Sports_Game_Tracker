@@ -6,15 +6,17 @@ OpenI启智平台链接：[Learning-Develop-Union/Sports_Game_tracker: Sports_Ga
 
 Github链接：[KirigiriSuzumiya/Sports_Game_Tracker: Sports_Game_tracker](https://github.com/KirigiriSuzumiya/Sports_Game_Tracker)
 
-| 功能                   | 效果图                                                      | 所需模型             |
-| ---------------------- | ----------------------------------------------------------- | -------------------- |
-| **球员与足球追踪**     | ![test-tracker](README.assets/football.gif)                 | 球员检测、足球检测   |
-| **滑雪姿态与单人过滤** | ![](README.assets/ski.gif)                                  | 球员检测、关键点检测 |
-| **球员高亮与链接**     | ![SNMOT-021 00_00_05-00_00_11](README.assets/highlight.gif) | 球员检测、人像分割   |
-| **球类飞行轨迹拟合**   | ![ball](README.assets/ball.gif)                             | 足球检测             |
-| **划船姿态与船桨角度** | ![boat](README.assets/boat.gif)                             | 球员检测、关键点检测 |
-| **高尔夫肩髋动作纠正** | ![golf](README.assets/golf.gif)                             | 球员检测、关键点检测 |
-| **更多功能与想法**     | **更多功能锐意开发中~欢迎大家提出需求！！！**               | ……                   |
+|          功能          |                            效果图                            |                所需模型                |
+| :--------------------: | :----------------------------------------------------------: | :------------------------------------: |
+|   **球员与足球追踪**   |         ![test-tracker](README.assets/football.gif)          |           球员检测、足球检测           |
+|   **球员高亮与链接**   | ![SNMOT-021 00_00_05-00_00_11](README.assets/highlight.gif)  |           球员检测、人像分割           |
+|  **球类飞行轨迹拟合**  |               ![ball](README.assets/ball.gif)                |                足球检测                |
+|      **球队分类**      |          ![team_clas](README.assets/team_clas.gif)           |                球员检测                |
+|  新！**球员号码识别**  | <img src="README.assets/player_ocr.gif" alt="player_ocr" style="zoom: 67%;" /> | 球员检测、骨骼关键点检测、光学字符识别 |
+| **滑雪姿态与单人过滤** |             <img src="README.assets/ski.gif"  />             |        球员检测、骨骼关键点检测        |
+| **划船姿态与船桨角度** |               ![boat](README.assets/boat.gif)                |        球员检测、骨骼关键点检测        |
+| **高尔夫肩髋动作纠正** |               ![golf](README.assets/golf.gif)                |        球员检测、骨骼关键点检测        |
+|   **更多功能与想法**   |        **更多功能锐意开发中~欢迎大家提出需求！！！**         |                   ……                   |
 
 
 
