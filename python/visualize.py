@@ -429,7 +429,7 @@ def visualize_player_rec(im, results):
                     (int(mot_res[i][3]), int(mot_res[i][4])),
                     cv2.FONT_ITALIC,
                     text_scale, (0, 255, 255),
-                    thickness=1)
+                    thickness=2)
         pass
     return im
 

@@ -1055,10 +1055,9 @@ class PipePredictor(object):
                         for i, res in enumerate(OCR_res):
                             res = res[0]
                             text = ""
-                            for j in res:
-                                if j.isdigit():
-                                    text = int(j)
-                                    break
+                            if res.isdigit() and int(res) != 1:
+                                text = int(res)
+                                cv2.imwrite(res+".jpg", rec_input[i])
                             player_mot_id = index2id[i]
                             if text != '':
                                 if self.id2num.get(player_mot_id):
@@ -1253,7 +1252,7 @@ class PipePredictor(object):
             image = np.array(image)
 
         kpt_res = result.get('kpt')
-        if (kpt_res is not None) and (not self.singleplayer) and (not self.golf):
+        if (kpt_res is not None) and (not self.singleplayer) and (not self.golf) and(not self.player_recognize):
             image = visualize_pose(
                 image,
                 kpt_res,
