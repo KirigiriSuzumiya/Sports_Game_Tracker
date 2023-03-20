@@ -723,6 +723,22 @@ def visualize_team(im, results, boxes=None):
     return im
 
 
+def visualize_ball_control(im, res):
+    # ball_index = int(res["id"])
+    team_name = res["team"]
+    text_scale = max(1, im.shape[1] / 1000.)
+
+    cv2.putText(im,
+                team_name,
+                (im.shape[1]//2, 15),
+                cv2.FONT_HERSHEY_PLAIN,
+                text_scale,
+                (0, 0, 255),
+                2
+                )
+    return im
+
+
 def visualize_action(im,
                      mot_boxes,
                      action_visual_collector=None,

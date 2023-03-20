@@ -200,7 +200,26 @@ def argsparser():
         type=bool,
         default=False,
         help="whether recognize number of player")
-
+    parser.add_argument(
+        "--ball_control",
+        type=bool,
+        default=False,
+        help="whether display ball control team")
+    parser.add_argument(
+        "--show",
+        type=bool,
+        default=False,
+        help="whether display real-time image")
+    parser.add_argument(
+        "--save_loc",
+        type=bool,
+        default=False,
+        help="whether save ball location")
+    parser.add_argument(
+        "--loc_dir",
+        type=str,
+        default=None,
+        help="Dir of location info file.")
     return parser
 
 

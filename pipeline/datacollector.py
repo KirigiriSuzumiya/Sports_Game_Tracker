@@ -36,6 +36,7 @@ class Result(object):
             'ball_drawing': dict(),
             'link_player': dict(),
             'player_rec': dict(),
+            'ball_control': dict(),
         }
 
     def update(self, res, name):

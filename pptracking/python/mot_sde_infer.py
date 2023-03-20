@@ -155,6 +155,7 @@ class SDE_Detector(Detector):
 
         assert tracker_config is not None, 'Note that tracker_config should be set.'
         self.tracker_config = tracker_config
+        print(os.path.abspath(self.tracker_config))
         tracker_cfg = yaml.safe_load(open(self.tracker_config))
         cfg = tracker_cfg[tracker_cfg['type']]
 

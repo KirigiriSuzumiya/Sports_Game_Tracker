@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import os
 import time
 import traceback
@@ -25,21 +25,21 @@ import paddle
 import sys
 import copy
 from collections import Sequence, defaultdict
+from queue import Queue
+base_dir = os.path.dirname(__file__)
+sys.path.insert(0, base_dir)
 from datacollector import DataCollector, Result
-
-# add deploy path of PadleDetection to sys.path
-
-parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
-sys.path.insert(0, parent_path)
-
 from pipe_utils import argsparser, print_arguments, merge_cfg, PipeTimer
 from pipe_utils import get_test_images, crop_image_with_det, crop_image_with_mot, parse_mot_res, parse_mot_keypoint
 
+# add deploy path of PadleDetection to sys.path
+parent_path = os.path.abspath(os.path.join(__file__, *(['..'] * 2)))
+sys.path.insert(0, parent_path)
 from python.infer import Detector, DetectorPicoDet
 from python.keypoint_infer import KeyPointDetector
 from python.keypoint_postprocess import translate_to_ori_images
 from python.preprocess import decode_image, ShortSizeScale
-from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team, visualize_singleplayer, visualize_boating, visualize_ball, visualize_link_player, visualize_golf, visualize_player_rec
+from python.visualize import visualize_box_mask, visualize_attr, visualize_pose, visualize_action, visualize_speed, visualize_team, visualize_singleplayer, visualize_boating, visualize_ball, visualize_link_player, visualize_golf, visualize_player_rec, visualize_ball_control
 
 from pptracking.python.mot_sde_infer import SDE_Detector
 from pptracking.python.mot.visualize import plot_tracking_dict
@@ -364,11 +364,19 @@ class PipePredictor(object):
         self.boating = args.boating
         self.ball_drawing = args.ball_drawing
         self.link_player = args.link_player
+        self.ball_control = args.ball_control
+        if self.ball_control:
+            self.present_ball_id = []
+        self.loc_dir = args.loc_dir
+        self.show = args.show
         self.golf = args.golf
         if self.link_player or self.singleplayer or self.team_clas or self.golf:
             self.no_box_visual = True
         else:
             self.no_box_visual = False
+        self.save_loc = args.save_loc
+        if self.save_loc:
+            self.loc_list = []
         self.warmup_frame = self.cfg['warmup_frame']
         self.pipeline_res = Result()
         self.pipe_timer = PipeTimer()
@@ -377,7 +385,7 @@ class PipePredictor(object):
 
         # auto download inference model
         model_dir_dict = get_model_dir(self.cfg)
-
+        # self.no_box_visual = True
         if not is_video:
             det_cfg = self.cfg['DET']
             model_dir = model_dir_dict['DET']
@@ -650,20 +658,26 @@ class PipePredictor(object):
             if self.cfg['visual']:
                 self.visualize_image(batch_file, batch_input, self.pipeline_res)
 
-    def predict_video(self, video_file):
+    def predict_video(self, video_file, video_info=None):
         # mot
         # mot -> attr
         # mot -> pose -> action
-        capture = cv2.VideoCapture(video_file)
-        video_out_name = 'output.mp4' if self.file_name is None else self.file_name
+        if type(video_file) == str:
+            capture = cv2.VideoCapture(video_file)
+            video_out_name = 'output.mp4' if self.file_name is None else self.file_name
 
-        # Get Video info : resolution, fps, frame count
-        width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = int(capture.get(cv2.CAP_PROP_FPS))
-        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-        print("video fps: %d, frame_count: %d" % (fps, frame_count))
-
+            # Get Video info : resolution, fps, frame count
+            width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = int(capture.get(cv2.CAP_PROP_FPS))
+            frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+            print("video fps: %d, frame_count: %d" % (fps, frame_count))
+        elif type(video_file) == Queue:
+            video_out_name = 'output.mp4'
+            width = video_info["width"]
+            height = video_info["height"]
+            fps = video_info["fps"]
+            frame_count = video_info["frame_count"]
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         out_path = os.path.join(self.output_dir, video_out_name)
@@ -713,8 +727,17 @@ class PipePredictor(object):
         while (1):
             if frame_id % 10 == 0:
                 print('frame id: ', frame_id)
-
-            ret, frame = capture.read()
+            if type(video_file) == str:
+                ret, frame = capture.read()
+            elif type(video_file) == Queue:
+                if video_file.empty():
+                    time.sleep(0.5)
+                    continue
+                frame = video_file.get()
+                if frame is 1:
+                    ret = False
+                else:
+                    ret = True
             if not ret:
                 break
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -736,6 +759,7 @@ class PipePredictor(object):
                 boxes, scores, ids = res[0]  # batch size = 1 in MOT
                 mot_result = (frame_id + 1, boxes[0], scores[0],
                               ids[0])  # single class
+                # json.dump(mot_result, open(str(frame_id+1)+".json", "w"))
                 statistic = flow_statistic(
                     mot_result, self.secs_interval, self.do_entrance_counting,
                     self.do_break_in_counting, self.region_type, video_fps,
@@ -745,6 +769,8 @@ class PipePredictor(object):
 
                 # nothing detected
                 if len(mot_res['boxes']) == 0:
+                    if self.save_loc:
+                        self.loc_list.append([])
                     frame_id += 1
                     if frame_id > self.warmup_frame:
                         self.pipe_timer.img_num += 1
@@ -773,12 +799,16 @@ class PipePredictor(object):
                             if x:
                                 im = visualize_ball(im, his_location)
                         writer.write(im)
-                        if self.file_name is None:  # use camera_id
+                        if self.file_name is None or self.show:  # use camera_id
                             cv2.imshow('Paddle-Pipeline', im)
                             if cv2.waitKey(1) & 0xFF == ord('q'):
                                 break
                     continue
-
+                if self.save_loc:
+                    # print(scores)
+                    temp_index = list(scores).index(max(scores))
+                    self.loc_list.append(boxes[0][temp_index])
+                    # print(self.loc_list)
                 self.pipeline_res.update(mot_res, 'mot')
                 crop_input, new_bboxes, ori_bboxes = crop_image_with_mot(
                     frame_rgb, mot_res)
@@ -1089,6 +1119,44 @@ class PipePredictor(object):
                             update_res.append(str(text))
                             self.pipeline_res.update({"result": update_res, "mot_res": mot_res}, "player_rec")
 
+                if self.ball_control:
+                    if self.loc_dir:
+                        loc_info = np.load(self.loc_dir, allow_pickle=True)
+                        loc_info = loc_info[frame_id]
+
+                    ball_id = -1
+                    ball_score = -1
+                    for info in det_action_res:
+                        if info[1]["class"] == 1:
+                            continue
+                        if ball_id == -1:
+                            ball_id = info[0]
+                            ball_score = info[1]["score"]
+                        else:
+                            if ball_score <= info[1]["score"]:
+                                ball_id = info[0]
+                                ball_score = info[1]["score"]
+                    if ball_id != -1:
+                        self.present_ball_id.append([ball_id, ball_score])
+                    ball_score = -1
+                    for i in self.present_ball_id[-5:]:
+                        if ball_score <= i[1]:
+                            ball_id = i[0]
+                    team_index = id_team[ball_id].index(max(id_team[ball_id]))
+                    if team_index == 1:
+                        team_name = team_list[1][1]
+                    elif team_index == 0:
+                        team_name = team_list[0][1]
+                    else:
+                        team_name = 'unknown'
+                    # for i in ids:
+                    #     if ball_id == ids[i]:
+                    #         ball_index = i
+                    #         break
+                    # ball_control_res = {"id": ball_index, "team": team_name, "box":()}
+                    ball_control_res = {"team": team_name}
+                    self.pipeline_res.update(ball_control_res, "ball_control")
+
                 if self.with_mtmct and frame_id % 10 == 0:
                     crop_input, img_qualities, rects = self.reid_predictor.crop_image_with_mot(
                         frame_rgb, mot_res)
@@ -1152,12 +1220,19 @@ class PipePredictor(object):
                                               fps, entrance, records,
                                               center_traj)  # visualize
                 writer.write(im)
+                if type(video_file) == Queue:
+                    yield {"im":im, "frame_id":frame_id}
                 if self.file_name is None:  # use camera_id
                     cv2.imshow('Paddle-Pipeline', im)
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
+        if self.save_loc:
+            np.array(self.loc_list).dump("loc_info.npy")
+
         writer.release()
         print('save result to {}'.format(out_path))
+        if type(video_file) == Queue:
+            yield out_path
 
     def visualize_video(self,
                         image,
@@ -1246,6 +1321,10 @@ class PipePredictor(object):
                 self.singleplayer
             )
 
+        ball_control_res = result.get("ball_control")
+        if self.ball_control and ball_control_res:
+            image = visualize_ball_control(image, ball_control_res)
+
         human_attr_res = result.get('attr')
         if human_attr_res is not None:
             boxes = mot_res['boxes'][:, 1:]
@@ -1254,7 +1333,7 @@ class PipePredictor(object):
             image = np.array(image)
 
         kpt_res = result.get('kpt')
-        if (kpt_res is not None) and (not self.singleplayer) and (not self.golf) and(not self.player_recognize):
+        if (kpt_res is not None) and (not self.singleplayer) and (not self.golf) and (not self.player_recognize):
             image = visualize_pose(
                 image,
                 kpt_res,
@@ -1312,10 +1391,10 @@ class PipePredictor(object):
             image = visualize_action(image, mot_res['boxes'],
                                      visual_helper_for_display,
                                      action_to_display)
-
-        cv2.imshow('Paddle-Pipeline', image)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            pass
+        if self.show:
+            cv2.imshow('Paddle-Pipeline', image)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                pass
         return image
 
     def visualize_image(self, im_files, images, result):
@@ -1367,6 +1446,8 @@ if __name__ == '__main__':
     paddle.enable_static()
     parser = argsparser()
     FLAGS = parser.parse_args()
+    import pickle
+    pickle.dump(FLAGS, open("FLAGS", "wb"))
     FLAGS.device = FLAGS.device.upper()
     assert FLAGS.device in ['CPU', 'GPU', 'XPU'
                             ], "device should be CPU, GPU or XPU"
